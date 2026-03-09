@@ -3,35 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel VidYou</title>
+    <title>VidYou Panel</title>
     <style>
-        body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; background: #222; color: #fff; border: 1px solid #444; }
-        button { width: 100%; padding: 15px; background: #ff4500; color: #fff; border: none; font-weight: bold; cursor: pointer; }
-        .card { background: #222; padding: 15px; margin-top: 20px; border-radius: 8px; border-left: 5px solid #ff4500; }
+        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; }
+        .box { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #333; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #ff4500; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #ff4500; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
+        .lista-salva { margin-top: 20px; }
+        .card-lista { background: #1a1a1a; padding: 15px; border-radius: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .sync-btn { width: auto; padding: 8px 15px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
-    <h2>MEU PAINEL IPTV</h2>
-    <input type="text" id="url" placeholder="Cole aqui o link .m3u da sua lista">
-    <button onclick="sincronizar()">SINCRONIZAR COM PLAYER</button>
 
-    <div id="resultado"></div>
+<div class="box">
+    <h2>VIDYOU PANEL</h2>
+    <p>Gerencie suas listas e sincronize com o App.</p>
+    <input type="text" id="nome" placeholder="Nome da Lista (Ex: Minha Lista)">
+    <input type="text" id="url" placeholder="URL da Lista M3U">
+    <button onclick="salvar()">SALVAR LISTA</button>
+</div>
+
+<div class="lista-salva" id="container"></div>
 
 <script>
-    // VERIFIQUE SE ESTE LINK ABAIXO É O DO SEU PLAYER
-    const MEU_PLAYER = "https://roneiltonsouza.github.io/vidyou-iptv/";
+    const APP_URL = "https://roneiltonsouza.github.io/vidyou-iptv/";
 
-    function sincronizar() {
-        const urlLista = document.getElementById('url').value;
-        if (!urlLista) return alert("Cole uma URL primeiro!");
+    function salvar() {
+        const nome = document.getElementById('nome').value;
+        const url = document.getElementById('url').value;
+        if(!nome || !url) return alert("Preencha tudo!");
 
-        // Criando o link final que envia a lista para o player
-        const linkFinal = MEU_PLAYER + "?lista=" + encodeURIComponent(urlLista);
-        
-        // Abre o player em uma nova aba enviando a lista
-        window.open(linkFinal, '_blank');
+        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
+        listas.push({ nome, url });
+        localStorage.setItem('v-listas', JSON.stringify(listas));
+        location.reload();
     }
+
+    function sincronizar(urlLista) {
+        const destino = APP_URL + "?lista=" + encodeURIComponent(urlLista);
+        window.open(destino, '_blank');
+    }
+
+    function carregar() {
+        const listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
+        const container = document.getElementById('container');
+        container.innerHTML = listas.map(l => `
+            <div class="card-lista">
+                <span>${l.nome}</span>
+                <button class="sync-btn" onclick="sincronizar('${l.url}')">ABRIR NO APP</button>
+            </div>
+        `).join('');
+    }
+
+    window.onload = carregar;
 </script>
 </body>
 </html>
