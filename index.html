@@ -3,61 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel VidYou IPTV</title>
+    <title>Painel VidYou</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; }
-        .container { max-width: 500px; margin: auto; }
-        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; }
-        button { background: #ff4500; color: #fff; font-weight: bold; cursor: pointer; }
-        .list-item { background: #111; padding: 10px; margin: 5px 0; border-radius: 5px; display: flex; justify-content: space-between; }
+        body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #222; color: #fff; border: 1px solid #444; }
+        button { width: 100%; padding: 15px; background: #ff4500; color: #fff; border: none; font-weight: bold; cursor: pointer; }
+        .card { background: #222; padding: 15px; margin-top: 20px; border-radius: 8px; border-left: 5px solid #ff4500; }
     </style>
 </head>
 <body>
+    <h2>MEU PAINEL IPTV</h2>
+    <input type="text" id="url" placeholder="Cole aqui o link .m3u da sua lista">
+    <button onclick="sincronizar()">SINCRONIZAR COM PLAYER</button>
 
-<div class="container">
-    <h2>Painel VidYou IPTV</h2>
-    <input type="text" id="nome-lista" placeholder="Nome da Lista">
-    <input type="text" id="url-lista" placeholder="URL da Lista M3U">
-    <button onclick="salvarLista()">SALVAR NO PAINEL</button>
-    <hr>
-    <div id="lista-container"></div>
-</div>
+    <div id="resultado"></div>
 
 <script>
-    // URL do seu player hospedado
-    const urlVidYou = "https://roneiltonsouza.github.io/vidyou-iptv/";
+    // VERIFIQUE SE ESTE LINK ABAIXO É O DO SEU PLAYER
+    const MEU_PLAYER = "https://roneiltonsouza.github.io/vidyou-iptv/";
 
-    function salvarLista() {
-        const nome = document.getElementById('nome-lista').value;
-        const url = document.getElementById('url-lista').value;
-        if (!nome || !url) return alert("Preencha todos os campos!");
+    function sincronizar() {
+        const urlLista = document.getElementById('url').value;
+        if (!urlLista) return alert("Cole uma URL primeiro!");
 
-        let listas = JSON.parse(localStorage.getItem('minhas_listas') || '[]');
-        listas.push({ nome, url });
-        localStorage.setItem('minhas_listas', JSON.stringify(listas));
-        renderizar();
+        // Criando o link final que envia a lista para o player
+        const linkFinal = MEU_PLAYER + "?lista=" + encodeURIComponent(urlLista);
+        
+        // Abre o player em uma nova aba enviando a lista
+        window.open(linkFinal, '_blank');
     }
-
-    function sincronizar(url) {
-        if (!url) return alert("URL inválida!");
-        // Constrói a URL final enviando para o Player
-        const base = urlVidYou.endsWith('/') ? urlVidYou : urlVidYou + '/';
-        const finalUrl = base + "?lista=" + encodeURIComponent(url);
-        window.open(finalUrl, '_blank');
-    }
-
-    function renderizar() {
-        const container = document.getElementById('lista-container');
-        const listas = JSON.parse(localStorage.getItem('minhas_listas') || '[]');
-        container.innerHTML = listas.map((item, index) => `
-            <div class="list-item">
-                <span>${item.nome}</span>
-                <button style="width:auto" onclick="sincronizar('${item.url}')">SINCRONIZAR</button>
-            </div>
-        `).join('');
-    }
-
-    window.onload = renderizar;
 </script>
 </body>
 </html>
