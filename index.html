@@ -2,85 +2,62 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel VidYou - Gerenciador</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel VidYou IPTV</title>
     <style>
-        body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; }
-        .card { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #ff4500; max-width: 500px; margin: auto; }
-        input { width: 100%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #444; color: #fff; border-radius: 5px; box-sizing: border-box; }
-        button { cursor: pointer; padding: 10px; border: none; border-radius: 5px; font-weight: bold; width: 100%; margin-top: 5px; }
-        .btn-add { background: #ff4500; color: #fff; }
-        .lista-item { background: #333; padding: 10px; margin: 10px 0; display: flex; justify-content: space-between; align-items: center; border-radius: 5px; }
-        .btn-sync { background: #00ff00; color: #000; width: auto; font-size: 0.7rem; margin-right: 5px; }
-        .btn-del { background: #ff0000; color: #fff; width: auto; font-size: 0.7rem; }
+        body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; }
+        .container { max-width: 500px; margin: auto; }
+        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; }
+        button { background: #ff4500; color: #fff; font-weight: bold; cursor: pointer; }
+        .list-item { background: #111; padding: 10px; margin: 5px 0; border-radius: 5px; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Painel VidYou</h2>
-    <input type="text" id="nome-lista" placeholder="Nome da lista (Ex: TV Plus)">
-    <input type="text" id="url-lista" placeholder="Cole a URL M3U aqui...">
-    <button class="btn-add" onclick="salvarLista()">SALVAR NO PAINEL</button>
-
-    <hr style="border:0; border-top:1px solid #444; margin: 20px 0;">
-    <div id="container-listas"></div>
+<div class="container">
+    <h2>Painel VidYou IPTV</h2>
+    <input type="text" id="nome-lista" placeholder="Nome da Lista">
+    <input type="text" id="url-lista" placeholder="URL da Lista M3U">
+    <button onclick="salvarLista()">SALVAR NO PAINEL</button>
+    <hr>
+    <div id="lista-container"></div>
 </div>
 
 <script>
-    let listasSalvas = JSON.parse(localStorage.getItem('painel_listas')) || [];
+    // URL do seu player hospedado
+    const urlVidYou = "https://roneiltonsouza.github.io/vidyou-iptv/";
 
     function salvarLista() {
-        const nomeInput = document.getElementById('nome-lista');
-        const urlInput = document.getElementById('url-lista');
-        
-        if (!nomeInput.value || !urlInput.value) return alert("Preencha ambos os campos!");
+        const nome = document.getElementById('nome-lista').value;
+        const url = document.getElementById('url-lista').value;
+        if (!nome || !url) return alert("Preencha todos os campos!");
 
-        listasSalvas.push({ nome: nomeInput.value, url: urlInput.value });
-        localStorage.setItem('painel_listas', JSON.stringify(listasSalvas));
-        
-        // Limpa os campos após salvar
-        nomeInput.value = '';
-        urlInput.value = '';
-        
-        renderizarListas();
+        let listas = JSON.parse(localStorage.getItem('minhas_listas') || '[]');
+        listas.push({ nome, url });
+        localStorage.setItem('minhas_listas', JSON.stringify(listas));
+        renderizar();
     }
 
-    function excluirLista(index) {
-        listasSalvas.splice(index, 1);
-        localStorage.setItem('painel_listas', JSON.stringify(listasSalvas));
-        renderizarListas();
+    function sincronizar(url) {
+        if (!url) return alert("URL inválida!");
+        // Constrói a URL final enviando para o Player
+        const base = urlVidYou.endsWith('/') ? urlVidYou : urlVidYou + '/';
+        const finalUrl = base + "?lista=" + encodeURIComponent(url);
+        window.open(finalUrl, '_blank');
     }
 
-    function sincronizarVidYou(url) {
-        const urlVidYou = "index.html"; 
-        const urlFinal = `${urlVidYou}?lista=${encodeURIComponent(url)}`;
-        window.open(urlFinal, '_blank');
+    function renderizar() {
+        const container = document.getElementById('lista-container');
+        const listas = JSON.parse(localStorage.getItem('minhas_listas') || '[]');
+        container.innerHTML = listas.map((item, index) => `
+            <div class="list-item">
+                <span>${item.nome}</span>
+                <button style="width:auto" onclick="sincronizar('${item.url}')">SINCRONIZAR</button>
+            </div>
+        `).join('');
     }
 
-    function renderizarListas() {
-        const container = document.getElementById('container-listas');
-        container.innerHTML = "";
-        
-        listasSalvas.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.className = 'lista-item';
-            div.innerHTML = `
-                <span></span>
-                <div>
-                    <button class="btn-sync">SINCRONIZAR</button>
-                    <button class="btn-del">X</button>
-                </div>
-            `;
-            
-            div.querySelector('span').textContent = item.nome;
-            div.querySelector('.btn-sync').onclick = () => sincronizarVidYou(item.url);
-            div.querySelector('.btn-del').onclick = () => excluirLista(index);
-            
-            container.appendChild(div);
-        });
-    }
-
-    renderizarListas();
+    window.onload = renderizar;
 </script>
 </body>
 </html>
