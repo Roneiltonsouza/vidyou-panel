@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel VidYou</title>
+    <style>
+        body { background: #111; color: #fff; font-family: 'Segoe UI', sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: #1a1a1a; padding: 25px; border-radius: 12px; border: 1px solid #ff4500; width: 100%; max-width: 450px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        h2 { color: #ff4500; text-align: center; margin-top: 0; }
+        input { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 6px; box-sizing: border-box; }
+        button { cursor: pointer; padding: 12px; border: none; border-radius: 6px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
+        .btn-add { background: #ff4500; color: #fff; }
+        .btn-add:hover { background: #e03e00; }
+        
+        .lista-item { background: #222; padding: 12px; margin: 10px 0; display: flex; justify-content: space-between; align-items: center; border-radius: 6px; border-left: 4px solid #ff4500; }
+        .acoes { display: flex; gap: 5px; }
+        .btn-sync { background: #00ff00; color: #000; padding: 8px 12px; font-size: 0.75rem; border-radius: 4px; border: none; font-weight: bold; }
+        .btn-del { background: #ff4500; color: #fff; padding: 8px 12px; font-size: 0.75rem; border-radius: 4px; border: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Painel VidYou</h2>
+    <input type="text" id="nome-lista" placeholder="Nome da lista (Ex: Meus Canais)">
+    <input type="text" id="url-lista" placeholder="Cole a URL M3U aqui...">
+    <button class="btn-add" onclick="salvarLista()">SALVAR NO PAINEL</button>
+
+    <hr style="border:0; border-top:1px solid #333; margin: 25px 0;">
+    
+    <div id="container-listas">
+        </div>
+</div>
+
+<script>
+    // Carrega as listas salvas ao abrir
+    let listasSalvas = JSON.parse(localStorage.getItem('painel_listas')) || [];
+
+    function salvarLista() {
+        const nome = document.getElementById('nome-lista').value;
+        const url = document.getElementById('url-lista').value;
+        if (!nome || !url) return alert("Preencha todos os campos!");
+
+        listasSalvas.push({ nome, url });
+        localStorage.setItem('painel_listas', JSON.stringify(listasSalvas));
+        
+        // Limpa campos
+        document.getElementById('nome-lista').value = "";
+        document.getElementById('url-lista').value = "";
+        
+        renderizarListas();
+    }
+
+    function excluirLista(index) {
+        if(confirm("Deseja excluir esta lista?")) {
+            listasSalvas.splice(index, 1);
+            localStorage.setItem('painel_listas', JSON.stringify(listasSalvas));
+            renderizarListas();
+        }
+    }
+
+    // BOTÃO MÁGICO: Sincroniza com o App VidYou
+    function sincronizarVidYou(url) {
+        // Mude o link abaixo para o endereço do seu VidYou no GitHub Pages
+        const urlVidYou = "https://seu-usuario.github.io/vidyou-player/index.html"; 
+        const urlFinal = `${urlVidYou}?lista=${encodeURIComponent(url)}`;
+        
+        window.open(urlFinal, '_blank');
+    }
+
+    function renderizarListas() {
+        const container = document.getElementById('container-listas');
+        container.innerHTML = "";
+        
+        if (listasSalvas.length === 0) {
+            container.innerHTML = '<p style="color:#666; text-align:center;">Nenhuma lista salva.</p>';
+            return;
+        }
+
+        listasSalvas.forEach((item, index) => {
+            container.innerHTML += `
+                <div class="lista-item">
+                    <span>${item.nome}</span>
+                    <div class="acoes">
+                        <button class="btn-sync" onclick="sincronizarVidYou('${item.url}')">SINCRONIZAR</button>
+                        <button class="btn-del" onclick="excluirLista(${index})">X</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    renderizarListas();
+</script>
+</body>
+</html>
