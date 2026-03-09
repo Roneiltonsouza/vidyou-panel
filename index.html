@@ -2,98 +2,58 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VidYou Panel</title>
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; }
-        .box { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
+        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; }
+        .box { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #333; }
         input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #ff4500; border-radius: 5px; box-sizing: border-box; }
         button { width: 100%; padding: 15px; background: #ff4500; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
-        
-        .item-wrapper { position: relative; margin-bottom: 10px; border-radius: 5px; background: #ff0000; height: 50px; overflow: hidden; }
-        
-        .btn-delete {
-            position: absolute; right: 0; top: 0; height: 100%; width: 80px;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: bold; cursor: pointer; z-index: 1;
-        }
-
-        .card-lista {
-            position: relative; width: 100%; height: 100%;
-            background: #1a1a1a; padding: 0 15px; display: flex;
-            justify-content: space-between; align-items: center;
-            box-sizing: border-box; z-index: 2; transition: transform 0.2s ease-out;
-        }
-
-        .sync-btn { width: auto; padding: 8px 15px; font-size: 0.8rem; background: #333; color: white; border: none; border-radius: 4px; }
+        .lista-salva { margin-top: 20px; }
+        .card-lista { background: #1a1a1a; padding: 15px; border-radius: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .sync-btn { width: auto; padding: 8px 15px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
 <div class="box">
     <h2>VIDYOU PANEL</h2>
-    <input type="text" id="nome" placeholder="Nome da Lista">
+    <p>Gerencie suas listas e sincronize com o App.</p>
+    <input type="text" id="nome" placeholder="Nome da Lista (Ex: Minha Lista)">
     <input type="text" id="url" placeholder="URL da Lista M3U">
     <button onclick="salvar()">SALVAR LISTA</button>
 </div>
 
-<div id="container"></div>
+<div class="lista-salva" id="container"></div>
 
 <script>
+    const APP_URL = "https://roneiltonsouza.github.io/vidyou-iptv/";
+
     function salvar() {
         const nome = document.getElementById('nome').value;
         const url = document.getElementById('url').value;
-        if(!nome || !url) return alert("Preencha todos os campos!");
+        if(!nome || !url) return alert("Preencha tudo!");
 
         let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        // Cria um ID único baseado no tempo exato
-        listas.push({ id: Date.now(), nome, url }); 
+        listas.push({ nome, url });
         localStorage.setItem('v-listas', JSON.stringify(listas));
-        
-        document.getElementById('nome').value = '';
-        document.getElementById('url').value = '';
-        carregar();
+        location.reload();
     }
 
-    function excluir(id) {
-        // Filtra para manter todos, EXCETO o que tem o ID clicado
-        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        listas = listas.filter(item => item.id !== id);
-        localStorage.setItem('v-listas', JSON.stringify(listas));
-        carregar(); // Atualiza a tela mantendo apenas os restantes
+    function sincronizar(urlLista) {
+        const destino = APP_URL + "?lista=" + encodeURIComponent(urlLista);
+        window.open(destino, '_blank');
     }
 
     function carregar() {
         const listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
         const container = document.getElementById('container');
-        
         container.innerHTML = listas.map(l => `
-            <div class="item-wrapper">
-                <div class="btn-delete" onclick="excluir(${l.id})">EXCLUIR</div>
-                <div class="card-lista" 
-                     ontouchstart="startSwipe(event)" 
-                     ontouchmove="moveSwipe(event)" 
-                     ontouchend="endSwipe(event)">
-                    <span>${l.nome}</span>
-                    <button class="sync-btn" onclick="window.open('https://roneiltonsouza.github.io/vidyou-iptv/?lista=${encodeURIComponent(l.url)}', '_blank')">ABRIR</button>
-                </div>
+            <div class="card-lista">
+                <span>${l.nome}</span>
+                <button class="sync-btn" onclick="sincronizar('${l.url}')">ABRIR NO APP</button>
             </div>
         `).join('');
-    }
-
-    let startX = 0;
-    function startSwipe(e) { startX = e.touches[0].clientX; }
-
-    function moveSwipe(e) {
-        let diff = e.touches[0].clientX - startX;
-        if (diff < 0 && diff > -100) e.currentTarget.style.transform = `translateX(${diff}px)`;
-    }
-
-    function endSwipe(e) {
-        let el = e.currentTarget;
-        let diff = e.changedTouches[0].clientX - startX;
-        el.style.transition = 'transform 0.3s ease';
-        el.style.transform = (diff < -50) ? 'translateX(-80px)' : 'translateX(0)';
     }
 
     window.onload = carregar;
