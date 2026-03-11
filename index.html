@@ -3,94 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou Panel</title>
+    <title>Vidyou Painel - Gestor</title>
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; }
-        .box { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #ff4500; border-radius: 5px; box-sizing: border-box; }
-        button.btn-add { width: 100%; padding: 15px; background: #ff4500; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
-        
-        /* Estilos do Swipe */
-        .card-wrapper { position: relative; width: 100%; height: 60px; margin-bottom: 10px; overflow: hidden; background: #1a1a1a; border-radius: 5px; }
-        .delete-btn { position: absolute; right: 0; top: 0; bottom: 0; background: #ff0000; color: white; border: none; width: 80px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; }
-        .card-lista { 
-            position: absolute; left: 0; top: 0; width: 100%; height: 100%; 
-            background: #1a1a1a; padding: 0 15px; box-sizing: border-box;
-            display: flex; justify-content: space-between; align-items: center;
-            z-index: 2; transition: transform 0.3s ease;
+        /* Força a página a ocupar exatamente 100% sem rolagens extras */
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            width: 100%; 
+            background: #000; 
+            font-family: sans-serif; 
+            overflow: hidden; 
         }
-        .sync-btn { padding: 8px 15px; font-size: 0.8rem; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        
+        /* Barra de controle fixa no topo */
+        #barra-controle {
+            height: 55px; /* Tamanho fixo para não distorcer */
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border-bottom: 2px solid #ff4500;
+            z-index: 9999;
+        }
+
+        #nome-lista {
+            width: 120px;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            background: #000;
+            color: #fff;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #fff;
+        }
+
+        .btn-galeria { background: #444; }
+        .btn-enviar { background: #ff4500; }
+
+        /* Iframe ocupa o resto da tela perfeitamente */
+        #container-app {
+            width: 100%;
+            height: calc(100% - 55px); /* Subtrai exatamente a altura da barra */
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
 
-<div class="box">
-    <h2>VIDYOU PANEL</h2>
-    <input type="text" id="nome" placeholder="Nome da Lista">
-    <input type="text" id="url" placeholder="URL da Lista M3U">
-    <button class="btn-add" onclick="salvar()">SALVAR LISTA</button>
+<div id="barra-controle">
+    <input type="text" id="nome-lista" placeholder="Nome...">
+    <button class="btn btn-galeria" onclick="document.getElementById('file-input').click()">GALERIA</button>
+    <button class="btn btn-enviar" onclick="enviarParaIPTV()">ENVIAR</button>
+    <input type="file" id="file-input" style="display:none" accept=".m3u" onchange="lerArquivo(event)">
 </div>
 
-<div class="lista-salva" id="container"></div>
+<div id="container-app">
+    <iframe id="iptv-frame" src="https://roneiltonsouza.github.io/vidyou-panel/index.html"></iframe>
+</div>
 
 <script>
-    const APP_URL = "https://roneiltonsouza.github.io/vidyou-iptv/";
+    let conteudoM3U = "";
 
-    function salvar() {
-        const nome = document.getElementById('nome').value;
-        const url = document.getElementById('url').value;
-        if(!nome || !url) return alert("Preencha tudo!");
-
-        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        listas.push({ nome, url });
-        localStorage.setItem('v-listas', JSON.stringify(listas));
-        location.reload();
-    }
-
-    function deletar(index) {
-        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        listas.splice(index, 1);
-        localStorage.setItem('v-listas', JSON.stringify(listas));
-        location.reload();
-    }
-
-    function sincronizar(urlLista) {
-        const destino = APP_URL + "?lista=" + encodeURIComponent(urlLista);
-        window.open(destino, '_blank');
-    }
-
-    function carregar() {
-        const listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        const container = document.getElementById('container');
-        
-        container.innerHTML = listas.map((l, index) => `
-            <div class="card-wrapper">
-                <button class="delete-btn" onclick="deletar(${index})">🗑️</button>
-                <div class="card-lista" id="card-${index}" 
-                     ontouchstart="startDrag(event, ${index})" 
-                     ontouchend="endDrag(event, ${index})">
-                    <span>${l.nome}</span>
-                    <button class="sync-btn" onclick="sincronizar('${l.url}')">ABRIR</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    let startX = 0;
-    function startDrag(e, index) { startX = e.touches[0].clientX; }
-
-    function endDrag(e, index) {
-        let endX = e.changedTouches[0].clientX;
-        const card = document.getElementById('card-' + index);
-        // Se arrastar mais de 50px para a esquerda, mostra a lixeira
-        if (startX - endX > 50) {
-            card.style.transform = "translateX(-80px)";
-        } else {
-            card.style.transform = "translateX(0)";
+    function lerArquivo(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                conteudoM3U = e.target.result;
+                alert("Arquivo carregado!");
+            };
+            reader.readAsText(file);
         }
     }
 
-    window.onload = carregar;
+    function enviarParaIPTV() {
+        const nome = document.getElementById('nome-lista').value;
+        if (!conteudoM3U || !nome) {
+            alert("Erro: Escolha o arquivo e digite o nome!");
+            return;
+        }
+
+        // Envia para o iframe mantendo a interface original intacta
+        document.getElementById('iptv-frame').contentWindow.postMessage({
+            type: 'salvarLista',
+            nome: nome,
+            conteudo: conteudoM3U
+        }, '*');
+        
+        alert("Lista enviada!");
+    }
 </script>
+
 </body>
 </html>
