@@ -2,23 +2,40 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VidYou Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; }
+        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; overflow-x: hidden; }
         .box { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
         input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #ff4500; border-radius: 5px; box-sizing: border-box; }
-        button.btn-add { width: 100%; padding: 15px; background: #ff4500; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
-        .card-wrapper { position: relative; width: 100%; height: 60px; margin-bottom: 10px; overflow: hidden; background: #1a1a1a; border-radius: 5px; border-left: 4px solid #ff4500; }
-        .delete-btn { position: absolute; right: 0; top: 0; bottom: 0; background: #ff0000; color: white; border: none; width: 80px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .card-lista { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #1a1a1a; padding: 0 15px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 2; transition: transform 0.3s ease; }
+        button.btn-add { width: 100%; padding: 15px; background: #ff4500; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; }
+        
+        /* Estrutura do Card com Arraste */
+        .card-container { position: relative; width: 100%; height: 65px; margin-bottom: 10px; overflow: hidden; border-radius: 5px; }
+        
+        /* Botão de excluir que fica atrás */
+        .delete-btn { 
+            position: absolute; right: 0; top: 0; bottom: 0; width: 80px;
+            background: #ff0000; color: white; border: none; font-size: 1.2rem;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1;
+        }
+
+        /* Card visível que desliza */
+        .card-wrapper { 
+            position: absolute; left: 0; top: 0; width: 100%; height: 100%; 
+            background: #1a1a1a; border-left: 4px solid #ff4500; display: flex; 
+            align-items: center; justify-content: space-between; padding: 0 15px; 
+            box-sizing: border-box; z-index: 2; transition: transform 0.3s ease-out; touch-action: pan-y;
+        }
+
         .sync-btn { padding: 8px 15px; background: #ff4500; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        span { font-weight: bold; font-size: 1rem; }
     </style>
 </head>
 <body>
 
 <div class="box">
-    <h2 style="color:#ff4500">VIDYOU PANEL</h2>
+    <h2 style="color:#ff4500; margin-top:0;">VIDYOU PANEL</h2>
     <input type="text" id="nome" placeholder="Nome da Lista">
     <input type="text" id="url" placeholder="URL da Lista M3U">
     <button class="btn-add" onclick="salvar()">SALVAR LISTA</button>
@@ -28,11 +45,12 @@
 
 <script>
     const APP_URL = "https://roneiltonsouza.github.io/vidyou-iptv/";
+    let startX = 0;
 
     function salvar() {
         const nome = document.getElementById('nome').value;
         const url = document.getElementById('url').value;
-        if(!nome || !url) return alert("Preencha todos os campos!");
+        if(!nome || !url) return alert("Preencha tudo!");
         let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
         listas.push({ nome, url });
         localStorage.setItem('v-listas', JSON.stringify(listas));
@@ -43,26 +61,43 @@
         let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
         listas.splice(index, 1);
         localStorage.setItem('v-listas', JSON.stringify(listas));
+        
+        // Limpa no IPTV
+        const win = window.open(APP_URL + "?comando=limpar", '_blank');
+        setTimeout(() => { win.close(); }, 500);
+        
         location.reload();
     }
 
-    function abrirNoPlayer(urlLista) {
-        window.open(APP_URL + "?lista=" + encodeURIComponent(urlLista), '_blank');
+    function abrir(url) { 
+        window.open(APP_URL + "?lista=" + encodeURIComponent(url), '_blank'); 
     }
 
-    function carregar() {
-        const listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        document.getElementById('container').innerHTML = listas.map((l, index) => `
-            <div class="card-wrapper">
-                <button class="delete-btn" onclick="deletar(${index})">🗑️</button>
-                <div class="card-lista">
-                    <span>${l.nome}</span>
-                    <button class="sync-btn" onclick="abrirNoPlayer('${l.url}')">ABRIR</button>
-                </div>
-            </div>
-        `).join('');
+    // Lógica de Arrastar (Swipe)
+    function touchStart(e) { startX = e.touches[0].clientX; }
+
+    function touchEnd(e, index) {
+        let endX = e.changedTouches[0].clientX;
+        const el = document.getElementById('card-' + index);
+        if (startX - endX > 50) { // Arrastou para esquerda
+            el.style.transform = "translateX(-80px)";
+        } else if (endX - startX > 50) { // Arrastou para direita
+            el.style.transform = "translateX(0)";
+        }
     }
-    window.onload = carregar;
+
+    const listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
+    document.getElementById('container').innerHTML = listas.map((l, i) => `
+        <div class="card-container">
+            <button class="delete-btn" onclick="deletar(${i})">🗑️</button>
+            <div class="card-wrapper" id="card-${i}" 
+                 ontouchstart="touchStart(event)" 
+                 ontouchend="touchEnd(event, ${i})">
+                <span>${l.nome}</span>
+                <button class="sync-btn" onclick="abrir('${l.url}')">ABRIR</button>
+            </div>
+        </div>`).join('');
 </script>
+
 </body>
 </html>
