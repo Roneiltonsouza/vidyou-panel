@@ -2,63 +2,66 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel VidYou - Configurado</title>
+    <title>Painel VidYou</title>
     <style>
-        body { background: #0a0a0a; color: white; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
-        .painel { width: 100%; max-width: 500px; background: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #ff4500; }
-        h1 { color: #ff4500; text-align: center; font-size: 1.2rem; }
-        input, textarea { width: 100%; padding: 10px; margin: 10px 0; background: #111; border: 1px solid #444; color: #fff; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #ff4500; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding-top: 20px; }
+        .painel { width: 90%; max-width: 400px; background: #1a1a1a; padding: 20px; border-radius: 10px; border: 2px solid #ff4500; }
+        h1 { color: #ff4500; text-align: center; font-size: 1.5rem; margin-bottom: 20px; }
+        input, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #ff4500; color: #fff; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #ff4500; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        .msg { text-align: center; margin-top: 15px; font-weight: bold; color: #ff4500; }
     </style>
 </head>
 <body>
 
 <div class="painel">
-    <h1>PAINEL DE ENVIO</h1>
+    <h1>EMISSOR DE LISTAS VIDYOU</h1>
     
-    <input type="text" id="apiToken" placeholder="Token de Acesso (Ex: ghp_...)">
+    <input type="password" id="ghToken" placeholder="Seu Token (ghp_...)">
+    <input type="text" id="ghRepo" placeholder="usuario/repositorio" value="roneiltonsouza/vidyou-iptv">
     
-    <input type="text" id="apiId" value="NB_29FBD53F0BF41F787C975E1B018EA24F" readonly>
+    <label>Cole o Link URL da Lista M3U:</label>
+    <textarea id="m3uLink" placeholder="https://exemplo.com/lista.m3u"></textarea>
     
-    <textarea id="m3uUrl" placeholder="Cole o link URL HTTPS da sua lista M3U aqui"></textarea>
-    
-    <button onclick="enviarParaAPI()">ATUALIZAR TODOS OS USUÁRIOS</button>
-    <div id="msg" style="margin-top:15px; text-align:center;"></div>
+    <button onclick="atualizar()">ATUALIZAR TODOS OS USUÁRIOS</button>
+    <div id="msg" class="msg"></div>
 </div>
 
 <script>
-    async function enviarParaAPI() {
-        const token = document.getElementById('apiToken').value;
-        const apiId = document.getElementById('apiId').value;
-        const m3uUrl = document.getElementById('m3uUrl').value;
+    async function atualizar() {
+        const token = document.getElementById('ghToken').value;
+        const repo = document.getElementById('ghRepo').value;
+        const link = document.getElementById('m3uLink').value;
         const msg = document.getElementById('msg');
 
-        if(!m3uUrl.startsWith("https")) return alert("O link deve ser um HTTPS válido!");
+        if(!link.startsWith("http")) return alert("Cole um link válido!");
+        msg.innerText = "Sincronizando...";
 
-        msg.innerText = "Enviando para API...";
-
-        // Estrutura de envio conforme a sua arquitetura
         try {
-            const response = await fetch('https://api.github.com/repos/roneiltonsouza/vidyou-iptv/contents/lista.txt', {
+            // 1. Pega o SHA do arquivo atual
+            const getFile = await fetch(`https://api.github.com/repos/${repo}/contents/lista.txt`, {
+                headers: { 'Authorization': `token ${token}` }
+            });
+            const data = await getFile.json();
+            
+            // 2. Atualiza com o Link (Base64)
+            const response = await fetch(`https://api.github.com/repos/${repo}/contents/lista.txt`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: "Atualização via API: " + apiId,
-                    content: btoa(m3uUrl), // Envia a URL codificada conforme o esperado
-                    sha: "SUA_SHA_AQUI" // Nota: O sistema precisa da SHA do arquivo atual para sobrescrever
+                    message: "Atualização via Link M3U",
+                    content: btoa(link),
+                    sha: data.sha
                 })
             });
 
-            if(response.ok) {
-                msg.innerText = "✅ Sincronizado com a API!";
+            if (response.ok) {
+                msg.innerText = "✅ Sincronizado! Todos os apps receberão a nova lista.";
             } else {
-                msg.innerText = "❌ Erro ao comunicar com a API.";
+                msg.innerText = "❌ Erro ao sincronizar. Verifique o Token.";
             }
         } catch (e) {
-            msg.innerText = "Erro: " + e.message;
+            msg.innerText = "❌ Erro no sistema.";
         }
     }
 </script>
