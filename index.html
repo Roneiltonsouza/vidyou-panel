@@ -2,95 +2,76 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou Panel</title>
+    <title>Painel VidYou - Emissor Global</title>
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; }
-        .box { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #ff4500; border-radius: 5px; box-sizing: border-box; }
-        button.btn-add { width: 100%; padding: 15px; background: #ff4500; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
-        
-        /* Estilos do Swipe */
-        .card-wrapper { position: relative; width: 100%; height: 60px; margin-bottom: 10px; overflow: hidden; background: #1a1a1a; border-radius: 5px; }
-        .delete-btn { position: absolute; right: 0; top: 0; bottom: 0; background: #ff0000; color: white; border: none; width: 80px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; }
-        .card-lista { 
-            position: absolute; left: 0; top: 0; width: 100%; height: 100%; 
-            background: #1a1a1a; padding: 0 15px; box-sizing: border-box;
-            display: flex; justify-content: space-between; align-items: center;
-            z-index: 2; transition: transform 0.3s ease;
-        }
-        .sync-btn { padding: 8px 15px; font-size: 0.8rem; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        body { background: #0a0a0a; color: white; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
+        .painel { width: 100%; max-width: 500px; background: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #ff4500; }
+        h1 { color: #ff4500; text-align: center; font-size: 1.2rem; }
+        .config-box { background: #000; padding: 10px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #333; }
+        input { width: 100%; padding: 8px; margin: 5px 0; background: #111; border: 1px solid #444; color: #fff; box-sizing: border-box; }
+        textarea { width: 100%; height: 200px; background: #000; color: #0f0; border: 1px solid #333; padding: 10px; box-sizing: border-box; font-family: monospace; }
+        button { width: 100%; padding: 15px; background: #ff4500; border: none; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; border-radius: 5px; }
+        .status { text-align: center; margin-top: 10px; color: #888; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
-<div class="box">
-    <h2>VIDYOU PANEL</h2>
-    <input type="text" id="nome" placeholder="Nome da Lista">
-    <input type="text" id="url" placeholder="URL da Lista M3U">
-    <button class="btn-add" onclick="salvar()">SALVAR LISTA</button>
+<div class="painel">
+    <h1>EMISSOR DE LISTAS VIDYOU</h1>
+    
+    <div class="config-box">
+        <input type="password" id="ghToken" placeholder="GitHub Personal Token">
+        <input type="text" id="ghRepo" placeholder="usuario/repositorio">
+    </div>
+
+    <label>Cole a Nova Lista M3U:</label>
+    <textarea id="listaInput" placeholder="#EXTM3U..."></textarea>
+    
+    <button onclick="publicarLista()">ATUALIZAR TODOS OS USUÁRIOS</button>
+    <div id="msg" class="status">Aguardando comando...</div>
 </div>
 
-<div class="lista-salva" id="container"></div>
-
 <script>
-    const APP_URL = "https://roneiltonsouza.github.io/vidyou-iptv/";
+    async function publicarLista() {
+        const token = document.getElementById('ghToken').value;
+        const repo = document.getElementById('ghRepo').value;
+        const lista = document.getElementById('listaInput').value;
+        const msg = document.getElementById('msg');
 
-    function salvar() {
-        const nome = document.getElementById('nome').value;
-        const url = document.getElementById('url').value;
-        if(!nome || !url) return alert("Preencha tudo!");
+        if(!lista.includes("#EXTM3U")) return alert("Lista Inválida!");
+        if(!token || !repo) return alert("Configure o Token e o Repositório!");
 
-        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        listas.push({ nome, url });
-        localStorage.setItem('v-listas', JSON.stringify(listas));
-        location.reload();
-    }
+        msg.innerText = "Conectando ao GitHub...";
+        const path = "lista.txt";
+        const url = `https://api.github.com/repos/${repo}/contents/${path}`;
 
-    function deletar(index) {
-        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        listas.splice(index, 1);
-        localStorage.setItem('v-listas', JSON.stringify(listas));
-        location.reload();
-    }
+        try {
+            // 1. Pega o SHA do arquivo atual para poder sobrescrever
+            const res = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
+            const data = await res.json();
+            const sha = data.sha;
 
-    function sincronizar(urlLista) {
-        const destino = APP_URL + "?lista=" + encodeURIComponent(urlLista);
-        window.open(destino, '_blank');
-    }
+            // 2. Envia a nova lista (Base64)
+            const update = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: "Atualização de Canais VidYou",
+                    content: btoa(unescape(encodeURIComponent(lista))),
+                    sha: sha
+                })
+            });
 
-    function carregar() {
-        const listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        const container = document.getElementById('container');
-        
-        container.innerHTML = listas.map((l, index) => `
-            <div class="card-wrapper">
-                <button class="delete-btn" onclick="deletar(${index})">🗑️</button>
-                <div class="card-lista" id="card-${index}" 
-                     ontouchstart="startDrag(event, ${index})" 
-                     ontouchend="endDrag(event, ${index})">
-                    <span>${l.nome}</span>
-                    <button class="sync-btn" onclick="sincronizar('${l.url}')">ABRIR</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    let startX = 0;
-    function startDrag(e, index) { startX = e.touches[0].clientX; }
-
-    function endDrag(e, index) {
-        let endX = e.changedTouches[0].clientX;
-        const card = document.getElementById('card-' + index);
-        // Se arrastar mais de 50px para a esquerda, mostra a lixeira
-        if (startX - endX > 50) {
-            card.style.transform = "translateX(-80px)";
-        } else {
-            card.style.transform = "translateX(0)";
+            if(update.ok) {
+                msg.innerText = "✅ Sincronizado! Todos os apps receberão a nova lista.";
+                msg.style.color = "#0f0";
+            } else {
+                msg.innerText = "❌ Erro ao enviar. Verifique o Token.";
+            }
+        } catch (e) {
+            msg.innerText = "❌ Erro de conexão ou arquivo inexistente.";
         }
     }
-
-    window.onload = carregar;
 </script>
 </body>
 </html>
