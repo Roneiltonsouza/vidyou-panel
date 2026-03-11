@@ -1,17 +1,34 @@
-# Painel VidYou IPTV
+# VidYou IPTV - Painel de Controle
 
-Gerenciador de listas M3U para o player VidYou IPTV. Este painel permite salvar, organizar e sincronizar suas listas M3U diretamente com o player.
+Este é o emissor central do ecossistema **VidYou IPTV**. Através deste painel, o administrador pode atualizar a grade de canais de todos os usuários conectados em tempo real.
 
-## 🚀 Como usar
-1. Acesse o painel pelo GitHub Pages.
-2. Insira o nome da sua lista no campo indicado.
-3. Cole a URL da sua lista M3U.
-4. Clique em "SALVAR NO PAINEL".
-5. Para assistir, clique no botão "SINCRONIZAR" ao lado da lista desejada.
+## 🛠 Como Funciona
+O painel utiliza a API REST do GitHub para sobrescrever o arquivo `lista.txt` no repositório principal do aplicativo. 
 
-## 🛠 Tecnologias
-- HTML5, CSS3 e JavaScript.
-- Armazenamento local (LocalStorage) para salvar suas listas com segurança no seu navegador.
+1. O administrador cola a lista M3U no campo de texto.
+2. O sistema solicita o **Token de Acesso** e o **Caminho do Repositório**.
+3. Ao clicar em atualizar, o arquivo é enviado e a mudança é propagada para todos os usuários do app automaticamente.
 
-## ⚙️ Configuração
-Para conectar este painel ao seu player VidYou, edite a variável `urlVidYou` no arquivo `index.html` com a URL do seu repositório do Player hospedado no GitHub Pages.
+## ⚙️ Configuração Necessária
+
+Para utilizar este painel, você precisará de:
+
+1. **GitHub Personal Access Token (PAT):**
+   - Vá em `Settings > Developer Settings > Personal Access Tokens > Tokens (classic)`.
+   - Gere um novo token com a permissão **'repo'** marcada.
+   - *Importante: Nunca compartilhe este token com ninguém.*
+
+2. **Caminho do Repositório:**
+   - O formato deve ser `seu-usuario/nome-do-repositorio-do-app`.
+   - Exemplo: `roneiltonsouza/vidyou-iptv`.
+
+## 🔐 Segurança
+- O painel não armazena o seu Token de forma permanente por questões de segurança.
+- A comunicação é feita diretamente entre o seu navegador e os servidores do GitHub via HTTPS.
+- Recomendamos manter este repositório privado ou não divulgar a URL pública do painel.
+
+## 🚀 Fluxo de Sincronização
+Painel (Browser) ➔ GitHub API ➔ Repositório (lista.txt) ➔ Usuários (VidYou App)
+
+---
+*Gerenciador exclusivo para a plataforma VidYou IPTV.*
