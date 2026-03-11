@@ -2,67 +2,95 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Vidyou Painel Oficial</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VidYou Panel</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
-        .container { max-width: 400px; margin: auto; background: #111; padding: 20px; border-radius: 10px; border: 1px solid #ff4500; }
-        input { width: 90%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #333; }
-        button { width: 100%; padding: 15px; margin: 5px 0; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        .btn-salvar { background: #ff4500; color: #000; }
-        .btn-abrir { background: #00ff00; color: #000; margin-top: 10px; }
-        iframe { width: 1px; height: 1px; border: none; visibility: hidden; }
+        body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; }
+        .box { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #ff4500; border-radius: 5px; box-sizing: border-box; }
+        button.btn-add { width: 100%; padding: 15px; background: #ff4500; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
+        
+        /* Estilos do Swipe */
+        .card-wrapper { position: relative; width: 100%; height: 60px; margin-bottom: 10px; overflow: hidden; background: #1a1a1a; border-radius: 5px; }
+        .delete-btn { position: absolute; right: 0; top: 0; bottom: 0; background: #ff0000; color: white; border: none; width: 80px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; }
+        .card-lista { 
+            position: absolute; left: 0; top: 0; width: 100%; height: 100%; 
+            background: #1a1a1a; padding: 0 15px; box-sizing: border-box;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 2; transition: transform 0.3s ease;
+        }
+        .sync-btn { padding: 8px 15px; font-size: 0.8rem; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>PAINEL DE ATIVAÇÃO</h2>
-    <input type="text" id="nome-lista" placeholder="Nome da Lista">
-    <button onclick="document.getElementById('file-input').click()" style="background:#333; color:#fff;">📁 GALERIA</button>
-    <input type="file" id="file-input" style="display:none" accept=".m3u" onchange="ler(event)">
-    <button class="btn-salvar" onclick="salvar()">💾 SALVAR LISTA</button>
-
-    <div id="area-lista" style="margin-top:20px; border-top: 1px solid #222; padding-top:10px; display:none;">
-        <span id="display-nome"></span><br>
-        <button class="btn-abrir" onclick="ativarNoIPTV()">🚀 ABRIR E ATIVAR NO IPTV</button>
-    </div>
+<div class="box">
+    <h2>VIDYOU PANEL</h2>
+    <input type="text" id="nome" placeholder="Nome da Lista">
+    <input type="text" id="url" placeholder="URL da Lista M3U">
+    <button class="btn-add" onclick="salvar()">SALVAR LISTA</button>
 </div>
 
-<iframe id="iptv-receptor" src="LINK_DO_SEU_IPTV_AQUI.html"></iframe>
+<div class="lista-salva" id="container"></div>
 
 <script>
-    let conteudoM3U = "";
-
-    function ler(e) {
-        const reader = new FileReader();
-        reader.onload = (event) => { conteudoM3U = event.target.result; alert("Arquivo pronto!"); };
-        reader.readAsText(e.target.files[0]);
-    }
+    const APP_URL = "https://roneiltonsouza.github.io/vidyou-iptv/";
 
     function salvar() {
-        const nome = document.getElementById('nome-lista').value;
-        if(!nome || !conteudoM3U) return alert("Preencha tudo!");
-        localStorage.setItem('lista_ativa', conteudoM3U);
-        localStorage.setItem('nome_ativo', nome);
-        document.getElementById('display-nome').innerText = "Lista: " + nome;
-        document.getElementById('area-lista').style.display = 'block';
-        alert("Lista salva no Painel!");
+        const nome = document.getElementById('nome').value;
+        const url = document.getElementById('url').value;
+        if(!nome || !url) return alert("Preencha tudo!");
+
+        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
+        listas.push({ nome, url });
+        localStorage.setItem('v-listas', JSON.stringify(listas));
+        location.reload();
     }
 
-    function ativarNoIPTV() {
-        const conteudo = localStorage.getItem('lista_ativa');
-        const nome = localStorage.getItem('nome_ativo');
-        const frame = document.getElementById('iptv-receptor');
-        
-        // Manda a ativação direto pro arquivo do IPTV
-        frame.contentWindow.postMessage({
-            type: 'ativarLista',
-            nome: nome,
-            conteudo: conteudo
-        }, '*');
-        
-        alert("Ativação Enviada!");
+    function deletar(index) {
+        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
+        listas.splice(index, 1);
+        localStorage.setItem('v-listas', JSON.stringify(listas));
+        location.reload();
     }
+
+    function sincronizar(urlLista) {
+        const destino = APP_URL + "?lista=" + encodeURIComponent(urlLista);
+        window.open(destino, '_blank');
+    }
+
+    function carregar() {
+        const listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
+        const container = document.getElementById('container');
+        
+        container.innerHTML = listas.map((l, index) => `
+            <div class="card-wrapper">
+                <button class="delete-btn" onclick="deletar(${index})">🗑️</button>
+                <div class="card-lista" id="card-${index}" 
+                     ontouchstart="startDrag(event, ${index})" 
+                     ontouchend="endDrag(event, ${index})">
+                    <span>${l.nome}</span>
+                    <button class="sync-btn" onclick="sincronizar('${l.url}')">ABRIR</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    let startX = 0;
+    function startDrag(e, index) { startX = e.touches[0].clientX; }
+
+    function endDrag(e, index) {
+        let endX = e.changedTouches[0].clientX;
+        const card = document.getElementById('card-' + index);
+        // Se arrastar mais de 50px para a esquerda, mostra a lixeira
+        if (startX - endX > 50) {
+            card.style.transform = "translateX(-80px)";
+        } else {
+            card.style.transform = "translateX(0)";
+        }
+    }
+
+    window.onload = carregar;
 </script>
 </body>
 </html>
