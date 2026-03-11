@@ -8,19 +8,18 @@
         body { background: #0a0a0a; color: #fff; font-family: sans-serif; padding: 20px; }
         .box { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px; border-top: 4px solid #ff4500; }
         input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #333; border-radius: 5px; box-sizing: border-box; }
-        input:focus { border-color: #ff4500; outline: none; }
         button.btn-add { width: 100%; padding: 15px; background: #ff4500; color: #000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
         
-        .card-container { position: relative; width: 100%; height: 70px; margin-bottom: 12px; overflow: hidden; border-radius: 8px; background: #1a1a1a; }
-        .delete-btn { position: absolute; right: 0; top: 0; bottom: 0; width: 80px; background: #ff0000; color: white; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1; font-size: 1.5rem; }
-        
-        .card-wrapper { 
+        /* Estrutura igual à versão que funciona */
+        .card-wrapper { position: relative; width: 100%; height: 60px; margin-bottom: 10px; overflow: hidden; background: #1a1a1a; border-radius: 5px; }
+        .delete-btn { position: absolute; right: 0; top: 0; bottom: 0; background: #ff0000; color: white; border: none; width: 80px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; }
+        .card-lista { 
             position: absolute; left: 0; top: 0; width: 100%; height: 100%; 
-            background: #1a1a1a; border-left: 5px solid #ff4500; display: flex; 
-            align-items: center; justify-content: space-between; padding: 0 20px; 
-            box-sizing: border-box; z-index: 2; transition: transform 0.3s ease; touch-action: pan-y;
+            background: #1a1a1a; padding: 0 15px; box-sizing: border-box;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 2; transition: transform 0.3s ease; border-left: 4px solid #ff4500;
         }
-        .sync-btn { padding: 10px 20px; background: #ff4500; color: #000; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .sync-btn { padding: 8px 15px; font-size: 0.9rem; background: #ff4500; color: #000; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; }
         h2 { color: #ff4500; margin: 0 0 15px 0; text-align: center; }
     </style>
 </head>
@@ -28,63 +27,71 @@
 
 <div class="box">
     <h2>VIDYOU PANEL</h2>
-    <input type="text" id="nome" placeholder="Nome da Lista (Ex: Canais VIP)">
+    <input type="text" id="nome" placeholder="Nome da Lista">
     <input type="text" id="url" placeholder="URL da Lista M3U">
-    <button class="btn-add" onclick="salvar()">+ SALVAR NA MINHA NUVEM</button>
+    <button class="btn-add" onclick="salvar()">SALVAR LISTA</button>
 </div>
 
-<div id="container"></div>
+<div class="lista-salva" id="container"></div>
 
 <script>
-    const PLAYER_URL = "https://roneiltonsouza.github.io/vidyou-iptv/";
-    let startX = 0;
+    const APP_URL = "https://roneiltonsouza.github.io/vidyou-iptv/";
 
     function salvar() {
         const nome = document.getElementById('nome').value;
         const url = document.getElementById('url').value;
-        if(!nome || !url) return alert("Preencha os campos!");
+        if(!nome || !url) return alert("Preencha tudo!");
+
+        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
+        listas.push({ nome, url });
+        localStorage.setItem('v-listas', JSON.stringify(listas));
+        location.reload();
+    }
+
+    function deletar(index) {
+        let listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
+        listas.splice(index, 1);
+        localStorage.setItem('v-listas', JSON.stringify(listas));
+        location.reload();
+    }
+
+    // Mantive a lógica original de envio que você confirmou que funciona
+    function sincronizar(urlLista) {
+        const destino = APP_URL + "?lista=" + encodeURIComponent(urlLista);
+        window.open(destino, '_blank');
+    }
+
+    function carregar() {
+        const listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
+        const container = document.getElementById('container');
         
-        let listas = JSON.parse(localStorage.getItem('vidyou_master') || '[]');
-        listas.push({ nome, url, id: Date.now() });
-        localStorage.setItem('vidyou_master', JSON.stringify(listas));
-        location.reload();
-    }
-
-    function deletar(id) {
-        let listas = JSON.parse(localStorage.getItem('vidyou_master') || '[]');
-        listas = listas.filter(l => l.id !== id);
-        localStorage.setItem('vidyou_master', JSON.stringify(listas));
-        location.reload();
-    }
-
-    function enviarParaTodos(urlLista) {
-        // Este link é o que você envia para seus clientes. 
-        // Quando eles clicarem, o player deles atualiza pra sempre.
-        const linkFinal = PLAYER_URL + "?lista=" + encodeURIComponent(urlLista);
-        window.open(linkFinal, '_blank');
-    }
-
-    // Lógica de arrastar para excluir
-    function tStart(e) { startX = e.touches[0].clientX; }
-    function tEnd(e, i) {
-        let diff = startX - e.changedTouches[0].clientX;
-        const el = document.getElementById('card-' + i);
-        el.style.transform = (diff > 60) ? "translateX(-80px)" : "translateX(0)";
-    }
-
-    const listas = JSON.parse(localStorage.getItem('vidyou_master') || '[]');
-    document.getElementById('container').innerHTML = listas.map(l => `
-        <div class="card-container">
-            <button class="delete-btn" onclick="deletar(${l.id})">🗑️</button>
-            <div class="card-wrapper" id="card-${l.id}" ontouchstart="tStart(event)" ontouchend="tEnd(event, ${l.id})">
-                <div>
-                    <strong style="display:block">${l.nome}</strong>
-                    <small style="color:#666">Pronta para envio</small>
+        container.innerHTML = listas.map((l, index) => `
+            <div class="card-wrapper">
+                <button class="delete-btn" onclick="deletar(${index})">🗑️</button>
+                <div class="card-lista" id="card-${index}" 
+                     ontouchstart="startDrag(event, ${index})" 
+                     ontouchend="endDrag(event, ${index})">
+                    <span>${l.nome}</span>
+                    <button class="sync-btn" onclick="sincronizar('${l.url}')">ABRIR</button>
                 </div>
-                <button class="sync-btn" onclick="enviarParaTodos('${l.url}')">ENVIAR</button>
             </div>
-        </div>
-    `).join('');
+        `).join('');
+    }
+
+    let startX = 0;
+    function startDrag(e, index) { startX = e.touches[0].clientX; }
+
+    function endDrag(e, index) {
+        let endX = e.changedTouches[0].clientX;
+        const card = document.getElementById('card-' + index);
+        if (startX - endX > 50) {
+            card.style.transform = "translateX(-80px)";
+        } else {
+            card.style.transform = "translateX(0)";
+        }
+    }
+
+    window.onload = carregar;
 </script>
 </body>
 </html>
