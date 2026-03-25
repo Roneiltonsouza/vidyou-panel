@@ -2,40 +2,98 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel VidYou</title>
+    <title>Painel VidYou IPTV PRO - Emissor</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding-top: 20px; }
-        .painel { width: 90%; max-width: 400px; background: #1a1a1a; padding: 20px; border-radius: 10px; border: 2px solid #ff4500; }
-        h1 { color: #ff4500; text-align: center; font-size: 1.5rem; margin-bottom: 20px; }
-        input, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #ff4500; color: #fff; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #ff4500; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .painel { 
+            width: 90%; max-width: 420px; background: rgba(15, 15, 15, 0.98); 
+            padding: 30px; border-radius: 15px; border: 2px solid #ff4500; 
+            box-shadow: 0 0 25px rgba(255, 69, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        h1 { color: #ff4500; text-align: center; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; }
+        label { font-size: 0.75rem; color: #ff4500; font-weight: bold; margin-bottom: 5px; display: block; }
+        input, textarea { 
+            width: 100%; padding: 12px; margin-bottom: 15px; background: #000; 
+            border: 1px solid #333; color: #fff; border-radius: 8px; box-sizing: border-box; 
+            outline: none; transition: 0.3s;
+        }
+        input:focus { border-color: #ff4500; box-shadow: 0 0 8px rgba(255, 69, 0, 0.4); }
+        button { 
+            width: 100%; padding: 15px; background: #ff4500; border: none; 
+            color: white; font-weight: bold; cursor: pointer; border-radius: 8px; 
+            text-transform: uppercase; transition: 0.3s; font-size: 1rem;
+        }
+        button:hover { background: #e63e00; transform: translateY(-2px); }
+        #msg { text-align: center; margin-top: 15px; font-weight: bold; font-size: 0.9rem; min-height: 20px; }
     </style>
 </head>
 <body>
+
 <div class="painel">
-    <h1>EMISSOR DE LISTAS VIDYOU</h1>
-    <input type="password" id="ghToken" placeholder="Seu Token (ghp_...)">
-    <input type="text" id="ghRepo" placeholder="usuario/repositorio" value="roneiltonsouza/vidyou-iptv">
-    <textarea id="m3uLink" placeholder="Link da Lista M3U"></textarea>
-    <button onclick="atualizar()">ATUALIZAR TODOS OS USUÁRIOS</button>
-    <div id="msg" style="text-align:center; margin-top:15px; color:#ff4500;"></div>
+    <h1>EMISSOR VIDYOU IPTV PRO</h1>
+    
+    <label>ID DE ACESSO (PERMISSÃO)</label>
+    <input type="password" id="acessoID" placeholder="Digite seu ID de 10 dígitos">
+
+    <label>GITHUB TOKEN</label>
+    <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx">
+
+    <label>LINK DA LISTA M3U</label>
+    <textarea id="m3uLink" rows="4" placeholder="Cole aqui o link .m3u ou .m3u8"></textarea>
+
+    <button onclick="atualizar()">ATUALIZAR SISTEMA</button>
+    <div id="msg"></div>
 </div>
+
 <script>
     async function atualizar() {
+        const acesso = document.getElementById('acessoID').value;
         const token = document.getElementById('ghToken').value;
-        const repo = document.getElementById('ghRepo').value;
-        const link = document.getElementById('m3uLink').value;
+        const repo = "roneiltonsouza/vidyou-iptv";
+        const link = document.getElementById('m3uLink').value.trim();
         const msg = document.getElementById('msg');
+
+        // VERIFICAÇÃO DE PERMISSÃO
+        if (acesso !== "1234567890") { 
+            msg.style.color = "#ff0000";
+            msg.innerText = "❌ PERMISSÃO NEGADA: ID INVÁLIDO";
+            return;
+        }
+
+        if (!token || !link) {
+            msg.style.color = "orange";
+            msg.innerText = "⚠️ Preencha Token e o Link da Lista";
+            return;
+        }
+
+        msg.style.color = "#ff4500";
+        msg.innerText = "⏳ Sincronizando com GitHub...";
+
         try {
-            const res = await fetch(`https://api.github.com/repos/${repo}/contents/lista.txt`, { headers: { 'Authorization': `token ${token}` } });
+            const url = `https://api.github.com/repos/${repo}/contents/lista.txt`;
+            const res = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
             const data = await res.json();
-            const update = await fetch(`https://api.github.com/repos/${repo}/contents/lista.txt`, {
+            
+            const update = await fetch(url, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: "Update", content: btoa(link), sha: data.sha })
+                body: JSON.stringify({ 
+                    message: "Atualização via Painel Pro", 
+                    content: btoa(link), 
+                    sha: data.sha 
+                })
             });
-            if (update.ok) msg.innerText = "✅ Sincronizado!";
-        } catch (e) { msg.innerText = "❌ Erro."; }
+
+            if (update.ok) {
+                msg.style.color = "#00ff00";
+                msg.innerText = "✅ SISTEMA ATUALIZADO!";
+            } else {
+                msg.innerText = "❌ Erro ao enviar para o repositório.";
+            }
+        } catch (e) { 
+            msg.innerText = "❌ Falha na conexão com API."; 
+        }
     }
 </script>
 </body>
