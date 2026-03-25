@@ -16,34 +16,39 @@
 <div class="painel">
     <h1>EMISSOR VIDYOU PRO</h1>
     
-    <label>ID DE ACESSO</label>
-    <input type="password" id="acessoID" value="1234567890"> <label>GITHUB TOKEN</label>
-    <input type="password" id="ghToken" value="ghp_SEU_TOKEN_AQUI"> <label>REPOSITÓRIO</label>
-    <input type="text" id="ghRepo" value="roneiltonsouza/vidyou-iptv">
+    <label>ID DE ACESSO (Salvo no Navegador)</label>
+    <input type="password" id="acessoID" placeholder="Digite uma vez">
+
+    <label>GITHUB TOKEN (Salvo no Navegador)</label>
+    <input type="text" id="ghToken" placeholder="ghp_...">
 
     <label>LINK DA LISTA M3U</label>
     <textarea id="m3uLink" placeholder="Cole o link da lista aqui"></textarea>
 
-    <button onclick="atualizar()">ATUALIZAR TODOS OS USUÁRIOS</button>
+    <button onclick="atualizar()">ATUALIZAR SISTEMA</button>
     <div id="msg" style="text-align:center; margin-top:15px; color:#ff4500;"></div>
 </div>
 
 <script>
+    // Carrega os dados salvos assim que abre a página
+    window.onload = () => {
+        if(localStorage.getItem('vidyou_token')) document.getElementById('ghToken').value = localStorage.getItem('vidyou_token');
+        if(localStorage.getItem('vidyou_id')) document.getElementById('acessoID').value = localStorage.getItem('vidyou_id');
+    }
+
     async function atualizar() {
         const acesso = document.getElementById('acessoID').value;
         const token = document.getElementById('ghToken').value;
-        const repo = document.getElementById('ghRepo').value;
+        const repo = "roneiltonsouza/vidyou-iptv";
         const link = document.getElementById('m3uLink').value.trim();
         const msg = document.getElementById('msg');
 
-        // VALIDAÇÃO DO ID FIXO
-        if (acesso !== "1234567890") { // DEVE SER O MESMO ID DO VALUE ACIMA
-            msg.innerText = "❌ PERMISSÃO NEGADA!";
-            return;
-        }
+        // Salva para não precisar digitar de novo
+        localStorage.setItem('vidyou_token', token);
+        localStorage.setItem('vidyou_id', acesso);
 
-        if (!link) {
-            msg.innerText = "⚠️ Cole o link da lista.";
+        if (acesso !== "1234567890") { 
+            msg.innerText = "❌ ID INCORRETO!";
             return;
         }
 
@@ -56,22 +61,14 @@
             const update = await fetch(url, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: "Update List", 
-                    content: btoa(link), 
-                    sha: data.sha 
-                })
+                body: JSON.stringify({ message: "Update List", content: btoa(link), sha: data.sha })
             });
 
             if (update.ok) {
                 msg.style.color = "#00ff00";
-                msg.innerText = "✅ Sincronizado com Sucesso!";
-            } else {
-                msg.innerText = "❌ Erro no GitHub.";
-            }
-        } catch (e) { 
-            msg.innerText = "❌ Falha na Conexão."; 
-        }
+                msg.innerText = "✅ SINCRONIZADO!";
+            } else { msg.innerText = "❌ Erro. Verifique o Token."; }
+        } catch (e) { msg.innerText = "❌ Falha na conexão."; }
     }
 </script>
 </body>
