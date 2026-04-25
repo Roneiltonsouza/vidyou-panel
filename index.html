@@ -1,42 +1,71 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Painel VidYou</title>
-    <style>
-        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding-top: 20px; }
-        .painel { width: 90%; max-width: 400px; background: #1a1a1a; padding: 20px; border-radius: 10px; border: 2px solid #ff4500; }
-        h1 { color: #ff4500; text-align: center; font-size: 1.5rem; margin-bottom: 20px; }
-        input, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #ff4500; color: #fff; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #ff4500; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
-    </style>
-</head>
-<body>
-<div class="painel">
-    <h1>EMISSOR DE LISTAS VIDYOU</h1>
-    <input type="password" id="ghToken" placeholder="Seu Token (ghp_...)">
-    <input type="text" id="ghRepo" placeholder="usuario/repositorio" value="roneiltonsouza/vidyou-iptv">
-    <textarea id="m3uLink" placeholder="Link da Lista M3U"></textarea>
-    <button onclick="atualizar()">ATUALIZAR TODOS OS USUÁRIOS</button>
-    <div id="msg" style="text-align:center; margin-top:15px; color:#ff4500;"></div>
-</div>
 <script>
     async function atualizar() {
-        const token = document.getElementById('ghToken').value;
-        const repo = document.getElementById('ghRepo').value;
-        const link = document.getElementById('m3uLink').value;
+        const btn = document.querySelector('button');
+        const token = document.getElementById('ghToken').value.trim();
+        const repo = document.getElementById('ghRepo').value.trim();
+        const link = document.getElementById('m3uLink').value.trim();
         const msg = document.getElementById('msg');
+        
+        // Efeito visual imediato para saber que o clique funcionou
+        msg.style.color = "#ff4500";
+        msg.innerText = "⏳ Iniciando...";
+        btn.disabled = true; // Desativa o botão temporariamente
+        btn.style.opacity = "0.5";
+
+        if(!token || !link || !repo) { 
+            msg.innerText = "⚠️ Preencha todos os campos!";
+            resetBtn(btn);
+            return; 
+        }
+
         try {
-            const res = await fetch(`https://api.github.com/repos/${repo}/contents/lista.txt`, { headers: { 'Authorization': `token ${token}` } });
-            const data = await res.json();
-            const update = await fetch(`https://api.github.com/repos/${repo}/contents/lista.txt`, {
-                method: 'PUT',
-                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: "Update", content: btoa(link), sha: data.sha })
+            // 1. Buscar o SHA do arquivo (necessário para atualizar)
+            const urlMetadata = `https://api.github.com/repos/${repo}/contents/lista.txt`;
+            const res = await fetch(urlMetadata, {
+                headers: { 'Authorization': `token ${token}` }
             });
-            if (update.ok) msg.innerText = "✅ Sincronizado!";
-        } catch (e) { msg.innerText = "❌ Erro."; }
+
+            if (!res.ok) {
+                throw new Error("Repositório ou Token inválidos (Arquivo lista.txt existe?)");
+            }
+
+            const data = await res.json();
+            
+            // 2. Codificar o link para Base64 (Método seguro para navegadores novos)
+            const b64Content = btoa(unescape(encodeURIComponent(link)));
+
+            // 3. Enviar para o GitHub
+            const update = await fetch(urlMetadata, {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': `token ${token}`,
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ 
+                    message: "Update via Painel", 
+                    content: b64Content, 
+                    sha: data.sha 
+                })
+            });
+
+            if (update.ok) {
+                msg.style.color = "#00ff00";
+                msg.innerText = "✅ Sincronizado com Sucesso!";
+            } else {
+                const erroServidor = await update.json();
+                msg.innerText = "❌ Erro GitHub: " + erroServidor.message;
+            }
+
+        } catch (e) { 
+            msg.innerText = "❌ Falha: " + e.message;
+            console.error(e);
+        } finally {
+            resetBtn(btn);
+        }
+    }
+
+    function resetBtn(btn) {
+        btn.disabled = false;
+        btn.style.opacity = "1";
     }
 </script>
-</body>
-</html>
