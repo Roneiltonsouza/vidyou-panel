@@ -17,7 +17,7 @@
     <input type="password" id="ghToken" placeholder="Seu Token (ghp_...)">
     <input type="text" id="ghRepo" placeholder="usuario/repositorio" value="roneiltonsouza/vidyou-iptv">
     <textarea id="m3uLink" placeholder="Link da Lista M3U"></textarea>
-    <button id="btn" onclick="atualizar()">ATUALIZAR TODOS OS USUÁRIOS</button>
+    <button id="mainBtn" onclick="atualizar()">ATUALIZAR TODOS OS USUÁRIOS</button>
     <div id="msg" style="text-align:center; margin-top:15px; color:#ff4500;"></div>
 </div>
 
@@ -27,46 +27,53 @@
         const repo = document.getElementById('ghRepo').value.trim();
         const link = document.getElementById('m3uLink').value.trim();
         const msg = document.getElementById('msg');
-        const btn = document.getElementById('btn');
-
+        
         msg.innerText = "⏳ Sincronizando...";
-        btn.disabled = true;
-
+        
         try {
             const url = `https://api.github.com/repos/${repo}/contents/lista.txt`;
+            
+            // PASSO 1: Tenta descobrir se o arquivo existe e qual o SHA dele
+            let res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
             let sha = null;
-
-            // Tenta pegar o arquivo se ele já existir
-            const resExist = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
-            if (resExist.ok) {
-                const data = await resExist.json();
+            if (res.status === 200) {
+                const data = await res.json();
                 sha = data.sha;
             }
 
-            // Codificação segura
-            const content = btoa(unescape(encodeURIComponent(link)));
+            // PASSO 2: Prepara o conteúdo
+            const contentB64 = btoa(unescape(encodeURIComponent(link)));
 
-            const update = await fetch(url, {
+            // PASSO 3: Envia (Se sha for null, ele cria. Se tiver sha, ele atualiza)
+            const payload = {
+                message: "Update lista " + new Date().getTime(),
+                content: contentB64
+            };
+            if (sha) payload.sha = sha;
+
+            const finalRes = await fetch(url, {
                 method: 'PUT',
-                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: "Update Lista",
-                    content: content,
-                    sha: sha // Se for nulo, o GitHub cria o arquivo do zero
-                })
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify(payload)
             });
 
-            if (update.ok) {
+            if (finalRes.ok) {
                 msg.style.color = "#00ff00";
-                msg.innerText = "✅ Sincronizado!";
+                msg.innerText = "✅ SUCESSO! Usuários atualizados.";
             } else {
-                const error = await update.json();
-                msg.innerText = "❌ Erro: " + error.message;
+                const errorData = await finalRes.json();
+                // Se der erro de permissão, o problema é o seu TOKEN
+                msg.innerText = "❌ ERRO: " + errorData.message;
             }
+
         } catch (e) {
-            msg.innerText = "❌ Falha na conexão.";
-        } finally {
-            btn.disabled = false;
+            msg.innerText = "❌ ERRO DE CONEXÃO: Verifique a internet.";
         }
     }
 </script>
