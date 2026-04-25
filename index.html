@@ -2,80 +2,92 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel VidYou</title>
+    <title>Painel VidYou - Emissor</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding-top: 20px; }
-        .painel { width: 90%; max-width: 400px; background: #1a1a1a; padding: 20px; border-radius: 10px; border: 2px solid #ff4500; }
-        h1 { color: #ff4500; text-align: center; font-size: 1.5rem; margin-bottom: 20px; }
-        input, textarea { width: 100%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #ff4500; color: #fff; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #ff4500; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding-top: 50px; margin: 0; }
+        .painel { width: 90%; max-width: 400px; background: #1a1a1a; padding: 30px; border-radius: 10px; border: 2px solid #ff4500; box-shadow: 0 0 20px rgba(255, 69, 0, 0.2); }
+        h1 { color: #ff4500; text-align: center; font-size: 1.5rem; margin-bottom: 25px; text-transform: uppercase; }
+        label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
+        input, textarea { width: 100%; padding: 12px; margin-bottom: 15px; background: #000; border: 1px solid #ff4500; color: #fff; border-radius: 5px; box-sizing: border-box; outline: none; }
+        button { width: 100%; padding: 15px; background: #ff4500; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; transition: 0.3s; }
+        button:hover { background: #e63e00; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        #msg { text-align: center; margin-top: 20px; font-weight: bold; min-height: 20px; }
     </style>
 </head>
 <body>
+
 <div class="painel">
-    <h1>EMISSOR DE LISTAS VIDYOU</h1>
-    <input type="password" id="ghToken" placeholder="Seu Token (ghp_...)">
-    <input type="text" id="ghRepo" placeholder="usuario/repositorio" value="roneiltonsouza/vidyou-iptv">
-    <textarea id="m3uLink" placeholder="Link da Lista M3U"></textarea>
-    <button id="mainBtn" onclick="atualizar()">ATUALIZAR TODOS OS USUÁRIOS</button>
-    <div id="msg" style="text-align:center; margin-top:15px; color:#ff4500;"></div>
+    <h1>EMISSOR VIDYOU</h1>
+    
+    <label>TOKEN DO GITHUB (ghp_...)</label>
+    <input type="password" id="ghToken" placeholder="Cole seu Token aqui">
+    
+    <label>REPOSITÓRIO (FIXADO)</label>
+    <input type="text" id="ghRepo" value="Roneiltonsouza/vidyouiptvpro" readonly style="opacity: 0.6; cursor: not-allowed;">
+    
+    <label>LINK DA LISTA M3U</label>
+    <textarea id="m3uLink" rows="4" placeholder="Cole o link .m3u ou .m3u8 aqui"></textarea>
+    
+    <button id="btnAtualizar" onclick="atualizar()">ATUALIZAR TODOS OS USUÁRIOS</button>
+    
+    <div id="msg"></div>
 </div>
 
 <script>
     async function atualizar() {
-        const token = document.getElementById('ghToken').value.trim();
-        const repo = document.getElementById('ghRepo').value.trim();
-        const link = document.getElementById('m3uLink').value.trim();
+        const btn = document.getElementById('btnAtualizar');
         const msg = document.getElementById('msg');
+        const token = document.getElementById('ghToken').value.trim();
+        const repo = "Roneiltonsouza/vidyouiptvpro"; // FIXADO PARA NÃO ERRAR MAIS
+        const link = document.getElementById('m3uLink').value.trim();
         
+        msg.style.color = "#ff4500";
         msg.innerText = "⏳ Sincronizando...";
-        
+        btn.disabled = true;
+
+        if(!token || !link) { 
+            msg.innerText = "⚠️ Preencha o Token e o Link!";
+            btn.disabled = false;
+            return; 
+        }
+
         try {
             const url = `https://api.github.com/repos/${repo}/contents/lista.txt`;
+            const headers = { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' };
+
+            // 1. Pega o SHA do arquivo
+            const res = await fetch(url, { headers });
+            if(!res.ok) throw new Error("Não achei o arquivo no GitHub. Verifique o Token.");
             
-            // PASSO 1: Tenta descobrir se o arquivo existe e qual o SHA dele
-            let res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            let sha = null;
-            if (res.status === 200) {
-                const data = await res.json();
-                sha = data.sha;
-            }
+            const data = await res.json();
 
-            // PASSO 2: Prepara o conteúdo
-            const contentB64 = btoa(unescape(encodeURIComponent(link)));
-
-            // PASSO 3: Envia (Se sha for null, ele cria. Se tiver sha, ele atualiza)
-            const payload = {
-                message: "Update lista " + new Date().getTime(),
-                content: contentB64
-            };
-            if (sha) payload.sha = sha;
-
-            const finalRes = await fetch(url, {
+            // 2. Envia a atualização
+            const update = await fetch(url, {
                 method: 'PUT',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify(payload)
+                headers,
+                body: JSON.stringify({
+                    message: "Update via Painel",
+                    content: btoa(unescape(encodeURIComponent(link))),
+                    sha: data.sha
+                })
             });
 
-            if (finalRes.ok) {
+            if (update.ok) {
                 msg.style.color = "#00ff00";
-                msg.innerText = "✅ SUCESSO! Usuários atualizados.";
+                msg.innerText = "✅ Lista Atualizada com Sucesso!";
             } else {
-                const errorData = await finalRes.json();
-                // Se der erro de permissão, o problema é o seu TOKEN
-                msg.innerText = "❌ ERRO: " + errorData.message;
+                const err = await update.json();
+                msg.innerText = "❌ Erro: " + err.message;
             }
 
-        } catch (e) {
-            msg.innerText = "❌ ERRO DE CONEXÃO: Verifique a internet.";
+        } catch (e) { 
+            msg.innerText = "❌ " + e.message;
+        } finally {
+            btn.disabled = false;
         }
     }
 </script>
+
 </body>
 </html>
