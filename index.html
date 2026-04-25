@@ -1,40 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel VidYou - Emissor</title>
+    <style>
+        /* O CSS que faz as coisas aparecerem na tela */
+        body { 
+            background: #000; 
+            color: #fff; 
+            font-family: sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            padding-top: 50px; 
+            margin: 0;
+        }
+        .painel { 
+            width: 90%; 
+            max-width: 400px; 
+            background: #1a1a1a; 
+            padding: 30px; 
+            border-radius: 10px; 
+            border: 2px solid #ff4500; 
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.2);
+        }
+        h1 { 
+            color: #ff4500; 
+            text-align: center; 
+            font-size: 1.5rem; 
+            margin-bottom: 25px; 
+            text-transform: uppercase;
+        }
+        label {
+            display: block;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+            margin-left: 2px;
+        }
+        input, textarea { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 15px; 
+            background: #000; 
+            border: 1px solid #ff4500; 
+            color: #fff; 
+            border-radius: 5px; 
+            box-sizing: border-box; 
+            outline: none;
+        }
+        input:focus, textarea:focus {
+            box-shadow: 0 0 5px #ff4500;
+        }
+        button { 
+            width: 100%; 
+            padding: 15px; 
+            background: #ff4500; 
+            border: none; 
+            color: white; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border-radius: 5px; 
+            transition: 0.3s;
+        }
+        button:hover { background: #e63e00; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        
+        #msg { 
+            text-align: center; 
+            margin-top: 20px; 
+            font-weight: bold; 
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="painel">
+    <h1>EMISSOR VIDYOU</h1>
+    
+    <label>TOKEN DO GITHUB (ghp_...)</label>
+    <input type="password" id="ghToken" placeholder="Cole seu Token aqui">
+    
+    <label>REPOSITÓRIO (usuario/repositorio)</label>
+    <input type="text" id="ghRepo" placeholder="ex: roneiltonsouza/vidyou-iptv" value="roneiltonsouza/vidyou-iptv">
+    
+    <label>LINK DA LISTA M3U</label>
+    <textarea id="m3uLink" rows="4" placeholder="Cole o link .m3u ou .m3u8 aqui"></textarea>
+    
+    <button id="btnAtualizar" onclick="atualizar()">ATUALIZAR TODOS OS USUÁRIOS</button>
+    
+    <div id="msg"></div>
+</div>
+
 <script>
     async function atualizar() {
-        const btn = document.querySelector('button');
+        const btn = document.getElementById('btnAtualizar');
         const token = document.getElementById('ghToken').value.trim();
         const repo = document.getElementById('ghRepo').value.trim();
         const link = document.getElementById('m3uLink').value.trim();
         const msg = document.getElementById('msg');
         
-        // Efeito visual imediato para saber que o clique funcionou
+        // Reset visual
         msg.style.color = "#ff4500";
-        msg.innerText = "⏳ Iniciando...";
-        btn.disabled = true; // Desativa o botão temporariamente
-        btn.style.opacity = "0.5";
+        msg.innerText = "⏳ Processando...";
+        btn.disabled = true;
 
         if(!token || !link || !repo) { 
             msg.innerText = "⚠️ Preencha todos os campos!";
-            resetBtn(btn);
+            btn.disabled = false;
             return; 
         }
 
         try {
-            // 1. Buscar o SHA do arquivo (necessário para atualizar)
+            // 1. Pega o SHA do arquivo atual
             const urlMetadata = `https://api.github.com/repos/${repo}/contents/lista.txt`;
             const res = await fetch(urlMetadata, {
                 headers: { 'Authorization': `token ${token}` }
             });
 
             if (!res.ok) {
-                throw new Error("Repositório ou Token inválidos (Arquivo lista.txt existe?)");
+                throw new Error("Não achei o arquivo 'lista.txt' no seu GitHub.");
             }
 
             const data = await res.json();
             
-            // 2. Codificar o link para Base64 (Método seguro para navegadores novos)
+            // 2. Transforma o link em Base64 (Jeito moderno)
             const b64Content = btoa(unescape(encodeURIComponent(link)));
 
-            // 3. Enviar para o GitHub
+            // 3. Manda pro GitHub
             const update = await fetch(urlMetadata, {
                 method: 'PUT',
                 headers: { 
@@ -50,22 +143,19 @@
 
             if (update.ok) {
                 msg.style.color = "#00ff00";
-                msg.innerText = "✅ Sincronizado com Sucesso!";
+                msg.innerText = "✅ Lista enviada com sucesso!";
             } else {
-                const erroServidor = await update.json();
-                msg.innerText = "❌ Erro GitHub: " + erroServidor.message;
+                const erroData = await update.json();
+                msg.innerText = "❌ Erro no GitHub: " + erroData.message;
             }
 
         } catch (e) { 
             msg.innerText = "❌ Falha: " + e.message;
-            console.error(e);
         } finally {
-            resetBtn(btn);
+            btn.disabled = false;
         }
     }
-
-    function resetBtn(btn) {
-        btn.disabled = false;
-        btn.style.opacity = "1";
-    }
 </script>
+
+</body>
+</html>
